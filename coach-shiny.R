@@ -53,9 +53,12 @@ server <- function(input, output) {
       filter(game_seconds_remaining == input$game_secs_select) %>%
       filter(score_differential == input$score_diff_select)
     
-    row %>% gt()
+    up_or_down = ifelse(input$score_diff_select >= 0, ", Up ", ", Down ")
+    string = paste0("4th & ",  input$distance_select, ", ", input$yards_to_goal_select,
+                    " yards to goal", up_or_down, input$score_diff_select, ", ", 
+                    input$game_secs_select, " seconds left")
     
-    up_or_down = ifelse(input$score_diff_select >= 0, "Up", "Down")
+    row %>% gt() %>% tab_header(string)
     
   }, width = 850)
 
