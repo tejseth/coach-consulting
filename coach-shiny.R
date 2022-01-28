@@ -4,6 +4,7 @@ library(ggimage)
 library(gt)
 library(ranger)
 library(vip)
+library(shinythemes)
 
 final_grid <- read_csv(url("https://raw.githubusercontent.com/tejseth/coach-consulting/master/final_grid.csv"))
 
@@ -11,12 +12,12 @@ options(shiny.usecairo=T)
 
 game_seconds_params <- c(3600, 2700, 1800, 1350, 900, 720, 420, 240, 120, 60, 30)
 
-ui <- fluidPage(
+ui <- fluidPage(theme = shinytheme("cerulean"),
   
   titlePanel("Coaching Consulting"),
   
   mainPanel(
-    navbarPage("By Michael V",
+    navbarPage("By Michael Venit",
       tabPanel("4th Down Decisions",
         fluidRow(
           column(4, align = "center",
