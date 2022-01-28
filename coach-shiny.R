@@ -55,6 +55,8 @@ server <- function(input, output) {
     
     row %>% gt()
     
+    up_or_down = ifelse(input$score_diff_select >= 0, "Up", "Down")
+    
   }, width = 850)
 
   
