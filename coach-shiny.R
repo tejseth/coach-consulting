@@ -5,6 +5,7 @@ library(gt)
 library(ranger)
 library(vip)
 library(shinythemes)
+library(gtExtras)
 
 final_grid <- read_csv(url("https://raw.githubusercontent.com/tejseth/coach-consulting/master/final_grid.csv"))
 
@@ -58,7 +59,27 @@ server <- function(input, output) {
                     " yards to goal", up_or_down, input$score_diff_select, ", ", 
                     input$game_secs_select, " seconds left")
     
-    row %>% gt() %>% tab_header(string)
+    # row %>% gt() %>% tab_header(string)
+  
+    
+    df <- data.frame(Label  = c("Go For It", "Kick a FG", "Punt"),
+                Success = c(row$wp1, row$wp3, NA),
+                Failure = c(row$wp2, row$wp4, NA),
+                conv_rate = c(row$c1, row$c2, NA))
+      
+    df <- df %>% mutate(exp_wpa = (Success*conv_rate + Failure*(1-conv_rate))) 
+    
+    df2 <- mutate_if(df, is.numeric, ~ . * 100) %>% 
+    mutate_if(is.numeric, round, digits = 1)
+    
+    df2 %>% 
+      distinct() %>% 
+      gt() %>% 
+      tab_header(string) %>%
+      gtExtras::gt_theme_538() %>%
+      cols_label(conv_rate = "Conversion Rate",
+                 exp_wpa = "Expected WPA")
+      
     
   }, width = 850)
 
