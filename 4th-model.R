@@ -152,7 +152,7 @@ made_fg <- pbp %>%
   filter(field_goal_result == "made") %>%
   filter(!is.na(wpa))
 
-mean(made_fg$wpa)
+mean(made_fg$wpa + 0.1)
 
 made_fg_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_differential,
                      data = made_fg, num.trees = 100, importance = "impurity")

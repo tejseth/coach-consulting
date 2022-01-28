@@ -78,7 +78,8 @@ server <- function(input, output) {
       tab_header(string) %>%
       gtExtras::gt_theme_538() %>%
       cols_label(conv_rate = "Conversion Rate",
-                 exp_wpa = "Expected WPA")
+                 exp_wpa = "Expected WPA") %>%
+      cols_align(align = "center")
       
     
   }, width = 850)
