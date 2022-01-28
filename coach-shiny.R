@@ -34,13 +34,34 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
           column(7, align = "center",
                  sliderInput("score_diff_select", "Score Diff.", value = 0, min = -14, max = 11),
           ),
-        )
+          mainPanel(
+            plotOutput(outputId = "decision_table",
+                       width = "100%",
+                       height = "50%"),
+            br(),
+            tableOutput("decision_table"),
+            br()
+          ),
+        ),
       )
     )
   )
 )
 
 server <- function(input, output) { 
+  
+  output$decision_table({
+    
+    row <- final_grid %>% 
+      filter(yardline_100 == input$yards_to_goal_select) %>%
+      filter(ydstogo == input$distance_select) %>%
+      filter(game_seconds_remaining = input$game_seconds_remaining) %>%
+      filter(score_differential == input$score_differential)
+    
+    row %>% gt()
+    
+  }, width = 850)
+
   
 }
 
