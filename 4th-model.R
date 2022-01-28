@@ -213,5 +213,6 @@ final_grid <- hyper_grid_preds %>%
          k = ifelse(k_sup > wp5, k_sup, wp5),
          a = wp1*c1 + wp2*(1-c1) - k)
 
+write_csv(final_grid, "final_grid.csv")
 
 
