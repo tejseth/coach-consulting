@@ -150,7 +150,8 @@ vip(fail_4th_rf)
 
 made_fg <- pbp %>%
   filter(field_goal_result == "made") %>%
-  filter(!is.na(wpa))
+  filter(!is.na(wpa)) %>%
+  mutate(wpa = wpa + 0.075)
 
 mean(made_fg$wpa + 0.1)
 
@@ -163,7 +164,7 @@ vip(made_fg_rf)
 
 miss_fg <- pbp %>%
   filter(field_goal_result != "made") %>%
-  filter(!is.na(wpa))
+  filter(!is.na(wpa)) 
 
 mean(miss_fg$wpa)
 
