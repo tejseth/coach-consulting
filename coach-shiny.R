@@ -7,6 +7,8 @@ library(vip)
 library(shinythemes)
 library(gtExtras)
 
+# Have explanations for each column
+
 final_grid <- read_csv(url("https://raw.githubusercontent.com/tejseth/coach-consulting/master/final_grid.csv"))
 
 options(shiny.usecairo=T)

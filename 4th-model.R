@@ -126,7 +126,10 @@ success_4th <- pbp %>%
   filter(down == 4) %>%
   filter(rush == 1 | pass == 1) %>%
   filter(yards_gained >= ydstogo) %>%
-  filter(!is.na(wpa))
+  filter(!is.na(wpa)) %>%
+  mutate(wpa = ifelse(wpa < 0, -wpa, wpa))
+
+hist(success_4th$wpa)
 
 success_4th_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_differential, 
                          data = success_4th, num.trees = 100, importance = "impurity")
@@ -139,7 +142,10 @@ fail_4th <- pbp %>%
   filter(down == 4) %>%
   filter(rush == 1 | pass == 1) %>%
   filter(yards_gained < ydstogo) %>%
-  filter(!is.na(wpa))
+  filter(!is.na(wpa)) %>%
+  mutate(wpa = ifelse(wpa > 0, -wpa, wpa))
+
+hist(fail_4th$wpa)
 
 fail_4th_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_differential, 
                          data = fail_4th, num.trees = 100, importance = "impurity")
@@ -151,9 +157,10 @@ vip(fail_4th_rf)
 made_fg <- pbp %>%
   filter(field_goal_result == "made") %>%
   filter(!is.na(wpa)) %>%
-  mutate(wpa = wpa + 0.075)
+  filter(wp < 0.75 & wpa > -0.2) %>%
+  mutate(wpa = ifelse(wpa < 0, -wpa, wpa))
 
-mean(made_fg$wpa + 0.1)
+made_fg %>% ggplot(aes(x = wp, y = wpa)) + geom_point(aes(color = game_seconds_remaining))
 
 made_fg_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_differential,
                      data = made_fg, num.trees = 100, importance = "impurity")
@@ -164,9 +171,10 @@ vip(made_fg_rf)
 
 miss_fg <- pbp %>%
   filter(field_goal_result != "made") %>%
-  filter(!is.na(wpa)) 
+  filter(!is.na(wpa)) %>%
+  mutate(wpa = ifelse(wpa > 0, -wpa, wpa))
 
-mean(miss_fg$wpa)
+hist(miss_fg$wpa)
 
 miss_fg_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_differential,
                      data = miss_fg, num.trees = 100, importance = "impurity")
@@ -178,6 +186,8 @@ vip(miss_fg_rf)
 punts <- pbp %>%
   filter(punt_attempt == 1) %>%
   filter(!is.na(wpa))
+
+hist(punts$wpa)
 
 punt_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_differential,
                   data = punts, num.trees = 100, importance = "impurity")
@@ -207,6 +217,9 @@ conver_preds <- data.frame(predict.glm(init_logit, newdata = hyper_grid, type = 
 fg_preds <- data.frame(predict.glm(fg_logit, newdata = hyper_grid, type = "response")) %>% rename(c2 = predict.glm.fg_logit..newdata...hyper_grid..type....response..)
 
 hyper_grid_preds <- cbind(hyper_grid, success_preds, fail_preds, made_fg_preds, miss_fg_preds, punt_preds, conver_preds, fg_preds)
+
+hyper_grid_preds <- hyper_grid_preds %>%
+  mutate(wp5 = ifelse(yardline_100 < 35, NA, wp5))
 
 final_grid <- hyper_grid_preds %>%
   ungroup() %>%
