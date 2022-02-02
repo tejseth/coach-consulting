@@ -24,7 +24,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
       tabPanel("4th Down Decisions",
         fluidRow(
           column(4, align = "center",
-                sliderInput("yards_to_goal_select", "Yards to Goal", value = 10, min = 5, max = 65, sep = "", step = 5),
+                sliderInput("yards_to_goal_select", "Yards to Goal", value = 35, min = 5, max = 65, sep = "", step = 5),
             ),
           column(7, align = "center",
                 sliderInput("distance_select", "Yards to Sticks", value = 2, min = 1, max = 6),
@@ -32,10 +32,10 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
           column(4, align = "center",
                  selectInput("game_secs_select",
                              "Game Seconds Remaining",
-                             c(sort(unique(game_seconds_params))), selected = 420)
+                             c(sort(unique(game_seconds_params))), selected = 60)
           ),
           column(7, align = "center",
-                 sliderInput("score_diff_select", "Score Diff.", value = 0, min = -14, max = 11),
+                 sliderInput("score_diff_select", "Score Diff.", value = -4, min = -14, max = 11),
           ),
           mainPanel(
             tableOutput(outputId = "decision_table"),
@@ -54,7 +54,16 @@ server <- function(input, output) {
       filter(yardline_100 == input$yards_to_goal_select) %>%
       filter(ydstogo == input$distance_select) %>%
       filter(game_seconds_remaining == input$game_secs_select) %>%
-      filter(score_differential == input$score_diff_select)
+      filter(score_differential == input$score_diff_select) %>%
+      mutate(rec = case_when(
+        a < -0.02 ~ "Kick",
+        between(a, -0.02, 0.02) ~ "Toss-Up",
+        a > 0.02 ~ "Go For It",
+        TRUE ~ "Toss-Up"
+      ),
+      rec = case_when(
+        a >= 0 ~ paste0(rec, " (+", 100*round(a, 3), ")"),
+        a < 0 ~ paste0(rec, " (-", 100*round(a, 3), ")")))
     
     up_or_down = ifelse(input$score_diff_select >= 0, ", Up ", ", Down ")
     string = paste0("4th & ",  input$distance_select, ", ", input$yards_to_goal_select,
@@ -77,11 +86,33 @@ server <- function(input, output) {
     df2 %>% 
       distinct() %>% 
       gt() %>% 
-      tab_header(string) %>%
-      gtExtras::gt_theme_538() %>%
-      cols_label(conv_rate = "Conversion Rate",
+      tab_header(title = md(row$rec),
+                 subtitle = md(string)) %>%
+      gtExtras::gt_theme_espn() %>%
+      cols_label(Success = "WPA if Success",
+                 Failure = "WPA if Failure",
+                 conv_rate = "Conversion Rate",
                  exp_wpa = "Expected WPA") %>%
-      cols_align(align = "center")
+      cols_align(align = "center") %>%
+      opt_align_table_header(align = "center") %>%
+      tab_style(
+        style = cell_text(color = "red", weight = "bold"),
+        locations = cells_body(
+          columns = vars(exp_wpa),
+          rows = exp_wpa < 0
+        )
+      ) %>% 
+      tab_style(
+        style = cell_text(color = "darkgreen", weight = "bold"),
+        locations = cells_body(
+          columns = vars(exp_wpa),
+          rows = exp_wpa >= 0
+        )
+      ) %>%
+      tab_style(
+        style = cell_text(color = "red", weight = "bold", align = "center"),
+        locations = cells_title("title")
+      )
       
     
   }, width = 850)
