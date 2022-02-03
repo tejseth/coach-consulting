@@ -4,6 +4,8 @@ library(ggimage)
 library(gt)
 library(ranger)
 library(vip)
+library(nfl4th)
+library(shapper)
 
 pbp <- load_pbp(2015:2021)
 
@@ -229,4 +231,34 @@ final_grid <- hyper_grid_preds %>%
 
 write_csv(final_grid, "final_grid.csv")
 
+###########################################################################
+
+fourth <- nfl4th::load_4th_pbp(2014:2021)
+
+fourth <- fourth %>%
+  mutate(
+    should_go = dplyr::case_when(
+      go_boost > 1 ~ 1,
+      go_boost < -1 ~ 0,
+      TRUE ~ 2))
+
+go_when_should <- fourth %>%
+  filter(season == 2021, should_go == 1, !is.na(posteam)) %>%
+  group_by(posteam) %>%
+  summarize(count = n(),
+            went_perc = mean(go, na.rm = T)) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+go_when_should %>%
+  ggplot(aes(x = reorder(posteam, )))
+
+kicked_when_shouldnt <- fourth %>%
+  filter(season == 2021, should_go == 1, !is.na(posteam), go == 0) %>%
+  group_by(posteam) %>%
+  summarize(count = n(),
+            avg_wpa = mean(wpa)) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+go_when_should %>%
+  ggplot(aes(x = ))
 

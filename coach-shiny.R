@@ -91,7 +91,7 @@ server <- function(input, output) {
       gtExtras::gt_theme_espn() %>%
       cols_label(Success = "WPA if Success",
                  Failure = "WPA if Failure",
-                 conv_rate = "Conversion Rate",
+                 conv_rate = "Exp. Conversion Rate",
                  exp_wpa = "Expected WPA") %>%
       cols_align(align = "center") %>%
       opt_align_table_header(align = "center") %>%
@@ -115,7 +115,7 @@ server <- function(input, output) {
       )
       
     
-  }, width = 850)
+  }, width = 950)
 
   
 }
