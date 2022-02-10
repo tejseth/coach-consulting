@@ -17,7 +17,7 @@ game_seconds_params <- c(3600, 2700, 1800, 1350, 900, 720, 420, 240, 120, 60, 30
 
 ui <- fluidPage(theme = shinytheme("cerulean"),
   
-  titlePanel("Coaching Consulting"),
+  titlePanel("playcalleR"),
   
   mainPanel(
     navbarPage("By Michael Venit",
@@ -40,6 +40,15 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
           mainPanel(
             tableOutput(outputId = "decision_table"),
           ),
+          br(),
+          br(),
+          br(),
+          br(),
+          column(10, align = "left",
+          textOutput("wpa_success"),
+          textOutput("wpa_fail"),
+          textOutput("conv_rate"),
+          textOutput("exp_wpa"),),
         ),
       )
     )
@@ -48,6 +57,11 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
 
 server <- function(input, output) { 
   
+  output$wpa_success <- renderText("WPA if Success: The estimated win probability added if the play is successful")
+  output$wpa_fail <- renderText("WPA if Fail: The estimated win probability added if the play fails")
+  output$conv_rate <- renderText("Exp. Conversion Rate: The expected conversion rate for that decision")
+  output$exp_wpa <- renderText("Expected WPA: The aggregate of success and failure - the projected WPA if that decision is chosen")
+  
   output$decision_table <- render_gt({
     
     row <- final_grid %>% 
@@ -55,15 +69,17 @@ server <- function(input, output) {
       filter(ydstogo == input$distance_select) %>%
       filter(game_seconds_remaining == input$game_secs_select) %>%
       filter(score_differential == input$score_diff_select) %>%
+      mutate(wp5 = ifelse(input$yards_to_goal_select < 45, NA, wp5)) %>%
       mutate(rec = case_when(
         a < -0.02 ~ "Kick",
         between(a, -0.02, 0.02) ~ "Toss-Up",
         a > 0.02 ~ "Go For It",
         TRUE ~ "Toss-Up"
       ),
+      rec = ifelse((rec == "Kick" & k_sup != k), "Punt", rec),
       rec = case_when(
         a >= 0 ~ paste0(rec, " (+", 100*round(a, 3), ")"),
-        a < 0 ~ paste0(rec, " (-", 100*round(a, 3), ")")))
+        a < 0 ~ paste0(rec, " (+", abs(100*round(a, 3)), ")"))) 
     
     up_or_down = ifelse(input$score_diff_select >= 0, ", Up ", ", Down ")
     string = paste0("4th & ",  input$distance_select, ", ", input$yards_to_goal_select,
@@ -82,6 +98,8 @@ server <- function(input, output) {
     
     df2 <- mutate_if(df, is.numeric, ~ . * 100) %>% 
     mutate_if(is.numeric, round, digits = 1)
+    
+    df2$exp_wpa[3] = round(100*row$wp5, 1)
     
     df2 %>% 
       distinct() %>% 

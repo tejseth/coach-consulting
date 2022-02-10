@@ -68,7 +68,24 @@ pbp_went <- pbp_went %>%
   mutate(pred = init_logit$fitted.values)
 
 pbp_went_select <- pbp_went %>%
-  select(down, ydstogo, yardline_100, pred, converted)
+  select(down, ydstogo, yardline_100, pred, converted) %>%
+  mutate(rec = ifelse(pred > 0.5, 1, 0),
+         pred_correct = ifelse(rec == converted, 1, 0))
+
+mean(pbp_went_select$pred_correct)
+
+pbp_went_select %>% 
+  group_by(rec, converted) %>% 
+  tally(sort = T) %>%
+  ggplot(aes(x = as.factor(rec), y = as.factor(converted))) +
+  geom_tile(aes(fill = n)) +
+  geom_text(aes(label = n), size = 5) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(x = "Prediction",
+       y = "Conversion",
+       title = "Confusion Matrix for 4th Down Conversion Predictions (61.1% Accuracy)",
+       subtitle = "1 = conversion, 0 = failure")
 
 pbp_went_select %>%
   filter(between(ydstogo, -15, 15)) %>%
@@ -80,6 +97,8 @@ pbp_went_select %>%
        x = "Distance from Sticks") +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10))
 
+
+
 ################## Making Field Goal Probability #######################
 
 field_goals <- pbp %>% filter(field_goal_attempt == 1)
@@ -87,28 +106,28 @@ field_goals <- pbp %>% filter(field_goal_attempt == 1)
 field_goals <- field_goals %>%
   mutate(fg_made = ifelse(field_goal_result == "made", 1, 0))
 
-fg_per_game <- field_goals %>%
-  select(game_id, kicker_player_id, kicker_player_name, game_seconds_remaining, fg_made)
+# fg_per_game <- field_goals %>%
+#   select(game_id, kicker_player_id, kicker_player_name, game_seconds_remaining, fg_made)
 
-fg_missed <- fg_per_game %>%
-  filter(fg_made == 0) %>%
-  select(game_id, kicker_player_id, kicker_player_name, time_missed = game_seconds_remaining) %>%
-  group_by(game_id, kicker_player_id, kicker_player_name) %>%
-  mutate(count = row_number()) %>%
-  ungroup() %>%
-  distinct() %>%
-  filter(count == 1)
+# fg_missed <- fg_per_game %>%
+#   filter(fg_made == 0) %>%
+#   select(game_id, kicker_player_id, kicker_player_name, time_missed = game_seconds_remaining) %>%
+#   group_by(game_id, kicker_player_id, kicker_player_name) %>%
+#   mutate(count = row_number()) %>%
+#   ungroup() %>%
+#   distinct() %>%
+#   filter(count == 1)
 
-fg_per_game <- fg_per_game %>%
-  left_join(fg_missed, by = c("game_id", "kicker_player_id", "kicker_player_name"))
-
-fg_per_game <- fg_per_game %>%
-  mutate(prev_missed = ifelse(game_seconds_remaining < time_missed, 1, 0),
-         prev_missed = ifelse(is.na(prev_missed), 0, prev_missed)) %>%
-  select(game_id, kicker_player_id, game_seconds_remaining, prev_missed)
-
-field_goals <- field_goals %>%
-  left_join(fg_per_game, by = c("game_id", "kicker_player_id", "game_seconds_remaining"))
+# fg_per_game <- fg_per_game %>%
+#   left_join(fg_missed, by = c("game_id", "kicker_player_id", "kicker_player_name"))
+# 
+# fg_per_game <- fg_per_game %>%
+#   mutate(prev_missed = ifelse(game_seconds_remaining < time_missed, 1, 0),
+#          prev_missed = ifelse(is.na(prev_missed), 0, prev_missed)) %>%
+#   select(game_id, kicker_player_id, game_seconds_remaining, prev_missed)
+# 
+# field_goals <- field_goals %>%
+#   left_join(fg_per_game, by = c("game_id", "kicker_player_id", "game_seconds_remaining"))
 
 fg_logit <- glm(fg_made ~ yardline_100, 
                 data = field_goals, family = "binomial")
@@ -121,6 +140,26 @@ field_goals %>%
   geom_line(aes(y = pred_prob), color = "darkorange", size = 2) +
   geom_point(aes(y = fg_made), alpha = 0.4, color = "darkblue") +
   theme_minimal()
+
+field_goals <- field_goals %>%
+  mutate(pred_prob = fg_logit$fitted.values) %>%
+  mutate(pred_fg = ifelse(pred_prob > 0.5, 1, 0),
+         fg_correct = ifelse(pred_fg == fg_made, 1, 0))
+
+mean(field_goals$fg_correct)
+
+field_goals %>% 
+  group_by(pred_fg, fg_correct) %>% 
+  tally(sort = T) %>%
+  ggplot(aes(x = as.factor(pred_fg), y = as.factor(fg_correct))) +
+  geom_tile(aes(fill = n)) +
+  geom_text(aes(label = n), size = 5) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(x = "Field Goal Prediction",
+       y = "Field Goal Actual",
+       title = "Confusion Matrix for Field Goal Predictions (84.6% Accuracy)",
+       subtitle = "1 = conversion, 0 = failure")
 
 ###################### wp1: if go and succeed ##########################
 
@@ -138,6 +177,8 @@ success_4th_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 +
 
 vip(success_4th_rf)
 
+success_4th_rf$r.squared
+
 ###################### wp2: if go and fail ##########################
 
 fail_4th <- pbp %>%
@@ -154,6 +195,8 @@ fail_4th_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + sc
 
 vip(fail_4th_rf)
 
+fail_4th_rf$r.squared
+
 ###################### wp3: if make field goal ##########################
 
 made_fg <- pbp %>%
@@ -169,6 +212,8 @@ made_fg_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + sco
 
 vip(made_fg_rf)
 
+made_fg_rf$r.squared
+
 ###################### wp4: if missed field goal ##########################
 
 miss_fg <- pbp %>%
@@ -183,6 +228,8 @@ miss_fg_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + sco
 
 vip(miss_fg_rf)
 
+miss_fg_rf$r.squared
+
 ###################### wp5: punt ##########################
 
 punts <- pbp %>%
@@ -195,6 +242,8 @@ punt_rf <- ranger(wpa ~ game_seconds_remaining + ydstogo + yardline_100 + score_
                   data = punts, num.trees = 100, importance = "impurity")
 
 vip(punt_rf)
+
+punt_rf$r.squared
 
 ##############################################################################
 
