@@ -76,10 +76,9 @@ server <- function(input, output) {
         a > 0.02 ~ "Go For It",
         TRUE ~ "Toss-Up"
       ),
-      rec = ifelse((rec == "Kick" & k_sup != k), "Punt", rec),
-      rec = case_when(
-        a >= 0 ~ paste0(rec, " (+", 100*round(a, 3), ")"),
-        a < 0 ~ paste0(rec, " (+", abs(100*round(a, 3)), ")"))) 
+      rec = ifelse((rec == "Kick" & k_sup != k), "Punt", rec))
+      # rec = case_when(
+      #   a >= 0 ~ paste0(rec, " (+", 100*round(a, 3), ")")))
     
     up_or_down = ifelse(input$score_diff_select >= 0, ", Up ", ", Down ")
     string = paste0("4th & ",  input$distance_select, ", ", input$yards_to_goal_select,

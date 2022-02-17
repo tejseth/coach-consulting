@@ -6,6 +6,7 @@ library(ranger)
 library(vip)
 library(nfl4th)
 library(shapper)
+library(data.table)
 
 pbp <- load_pbp(2015:2021)
 
