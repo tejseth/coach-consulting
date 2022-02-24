@@ -14,6 +14,7 @@ final_grid <- read_csv(url("https://raw.githubusercontent.com/tejseth/coach-cons
 options(shiny.usecairo=T)
 
 game_seconds_params <- c(3600, 2700, 1800, 1350, 900, 720, 420, 240, 120, 60, 30)
+game_secs_params <- c(420, 240, 120, 60, 30)
 
 ui <- fluidPage(theme = shinytheme("cerulean"),
   
@@ -50,6 +51,27 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
           textOutput("conv_rate"),
           textOutput("exp_wpa"),),
         ),
+      ),
+      tabPanel("2 Point Conversion",
+        fluidRow(
+          column(4, align = "center",
+                 sliderInput("off_epa_select", "Offensive EPA/Play", value = 0, min = -0.7, max = 0.7, sep = "", step = 0.1),
+          ),
+          column(7, align = "center",
+                 sliderInput("def_epa_select", "Defensive EPA/Play", value = 0, min = -0.7, max = 0.7, sep = "", step = 0.1),
+          ),
+          column(4, align = "center",
+                 sliderInput("xp_make_rate_select", "Kicker XP Make Rate", value = 0.9, min = 0.8, max = 1.0, sep = "", step = 0.03),
+          ),
+          column(7, align = "center",
+                 selectInput("game_secs_select",
+                             "Game Seconds Remaining",
+                             c(sort(unique(game_secs_params))), selected = 60),
+          ),
+          column(11, align = "center",
+                 sliderInput("diff_score_select", "Score Diff.", value = 0, min = -10, max = 10, sep = "", step = 1),
+          ),
+        )
       )
     )
   )

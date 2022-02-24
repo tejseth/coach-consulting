@@ -68,7 +68,6 @@ full_train_2pt <- xgboost::xgb.DMatrix(model.matrix(~ . + 0, data = model_2pt_da
 model_2pt <- xgboost::xgboost(params = params, data = full_train_2pt, nrounds = nrounds, verbose = 2)
 vip(model_2pt, num_features = 5) 
 
-model_2pt$
 
 ####################### Making Extra Point conversion rate #############################
 
@@ -82,7 +81,9 @@ team_xp_rate <- pbp_xp %>%
             xp_make_rate = mean(xp_made))
 
 pbp_xp <- pbp_xp %>%
-  left_join(team_xp_rate, by = c("posteam", "season"))
+  left_join(team_xp_rate, by = c("posteam", "season")) %>%
+  # select(xp_made, xp_make_rate, game_seconds_remaining) %>%
+  filter(!is.na(xp_made), !is.na(xp_make_rate), !is.na(game_seconds_remaining))
 
 log_xp <- glm(xp_made ~ xp_make_rate + game_seconds_remaining, 
               data = pbp_xp, family = "binomial")
@@ -143,7 +144,7 @@ made_xp <- pbp_xp %>%
   dplyr::filter(xp_made == 1) %>%
   dplyr::filter(!is.na(wpa)) 
 
-made_xp_rf <- ranger(wpa ~ game_seconds_remaining + score_differential + prev_missed, 
+made_xp_rf <- ranger(wpa ~ game_seconds_remaining + score_differential, 
                      data = pbp_xp, num.trees = 100, importance = "impurity")
 
 vip(made_xp_rf)
@@ -182,7 +183,7 @@ two_fail_preds <- data.frame(predict(fail_2pt_rf, data.frame(two_pt_grid))$predi
 two_made_xp_preds <- data.frame(predict(made_xp_rf, data.frame(two_pt_grid))$predictions) %>% rename(wp3 = predict.made_xp_rf..data.frame.two_pt_grid...predictions)
 two_miss_xp_preds <- data.frame(predict(miss_xp_rf, data.frame(two_pt_grid))$predictions) %>% rename(wp4 = predict.miss_xp_rf..data.frame.two_pt_grid...predictions)
 two_conver_preds <- data.frame(predict.glm(log_2pt, newdata = two_pt_grid, type = "response")) %>% rename(c1 = predict.glm.log_2pt..newdata...two_pt_grid..type....response..)
-xp_preds <- data.frame(predict.glm(xp_logit, newdata = two_pt_grid, type = "response")) %>% rename(c2 = predict.glm.xp_logit..newdata...two_pt_grid..type....response..)
+xp_preds <- data.frame(predict.glm(log_xp, newdata = two_pt_grid, type = "response")) %>% rename(c2 = predict.glm.log_xp..newdata...two_pt_grid..type....response..)
 
 two_point_preds <- cbind(two_pt_grid, two_success_preds, two_fail_preds, two_made_xp_preds, two_miss_xp_preds, two_conver_preds, xp_preds)
 
@@ -190,3 +191,11 @@ two_point_grid <- two_point_preds %>%
   ungroup() %>%
   mutate(k = wp3*c2 + wp4*(1-c2),
          a = wp1*c1 + wp2*(1-c1) - k)
+
+two_point_grid <- two_point_grid %>%
+  mutate(off_epa_in_5 = round(off_epa_in_5, 2),
+         def_epa_in_5 = round(def_epa_in_5, 2))
+
+write_csv(two_point_grid, "two_point_grid.csv")
+
+
