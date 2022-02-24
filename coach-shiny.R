@@ -10,6 +10,7 @@ library(gtExtras)
 # Have explanations for each column
 
 final_grid <- read_csv(url("https://raw.githubusercontent.com/tejseth/coach-consulting/master/final_grid.csv"))
+two_point_grid <- read_csv(url("https://raw.githubusercontent.com/tejseth/coach-consulting/master/two_point_grid.csv"))
 
 options(shiny.usecairo=T)
 
@@ -61,7 +62,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                  sliderInput("def_epa_select", "Defensive EPA/Play", value = 0, min = -0.7, max = 0.7, sep = "", step = 0.1),
           ),
           column(4, align = "center",
-                 sliderInput("xp_make_rate_select", "Kicker XP Make Rate", value = 0.9, min = 0.8, max = 1.0, sep = "", step = 0.03),
+                 sliderInput("xp_make_rate_select", "Kicker XP Make Rate", value = 0.89, min = 0.8, max = 1.0, sep = "", step = 0.03),
           ),
           column(7, align = "center",
                  selectInput("game_secs_select",
@@ -69,8 +70,20 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                              c(sort(unique(game_secs_params))), selected = 60),
           ),
           column(11, align = "center",
-                 sliderInput("diff_score_select", "Score Diff.", value = 0, min = -10, max = 10, sep = "", step = 1),
+                 sliderInput("diff_score_select", "Score Diff.", value = -2, min = -10, max = 10, sep = "", step = 1),
           ),
+          mainPanel(
+            tableOutput(outputId = "two_point_table"),
+          ),
+          br(),
+          br(),
+          br(),
+          br(),
+          column(10, align = "left",
+                 textOutput("wpa_success"),
+                 textOutput("wpa_fail"),
+                 textOutput("conv_rate"),
+                 textOutput("exp_wpa"),),
         )
       )
     )
@@ -152,7 +165,69 @@ server <- function(input, output) {
         style = cell_text(color = "red", weight = "bold", align = "center"),
         locations = cells_title("title")
       )
-      
+    
+    
+  }, width = 950)
+  
+  output$two_point_table <- render_gt({
+    
+    two_row <- two_point_grid %>%
+      filter(off_epa_in_5 == input$off_epa_select,
+             def_epa_in_5 == input$def_epa_select,
+             xp_make_rate == input$xp_make_rate_select,
+             game_seconds_remaining == input$game_secs_select,
+             score_differential == input$diff_score_select) %>%
+      mutate(rec = case_when(
+        a < 0.03 ~ "Kick XP",
+        between(a, 0.03, 0.08) ~ "Toss-Up",
+        a > 0.08 ~ "Go For 2",
+        TRUE ~ "Toss-Up"
+      ))
+    
+    two_up_or_down = ifelse(input$diff_score_select >= 0, "Up ", "Down ")
+    two_string = paste0(two_up_or_down, input$diff_score_select, ", ", 
+                    input$game_secs_select, " seconds left")
+    
+    two_df <- data.frame(Label  = c("Go For 2", "Kick XP"),
+                     Success = c(two_row$wp1, two_row$wp3),
+                     Failure = c(two_row$wp2, two_row$wp4),
+                     conv_rate = c(two_row$c1, two_row$c2))
+    
+    two_df <- two_df %>% mutate(exp_wpa = (Success*conv_rate + Failure*(1-conv_rate))) 
+    
+    two_df2 <- mutate_if(two_df, is.numeric, ~ . * 100) %>% 
+      mutate_if(is.numeric, round, digits = 1)
+    
+    two_df2 %>% 
+      distinct() %>% 
+      gt() %>% 
+      tab_header(title = md(two_row$rec),
+                 subtitle = md(two_string)) %>%
+      gtExtras::gt_theme_espn() %>%
+      cols_label(Success = "WPA if Success",
+                 Failure = "WPA if Failure",
+                 conv_rate = "Exp. Conversion Rate",
+                 exp_wpa = "Expected WPA") %>%
+      cols_align(align = "center") %>%
+      opt_align_table_header(align = "center") %>%
+      tab_style(
+        style = cell_text(color = "red", weight = "bold"),
+        locations = cells_body(
+          columns = vars(exp_wpa),
+          rows = exp_wpa < 0
+        )
+      ) %>% 
+      tab_style(
+        style = cell_text(color = "darkgreen", weight = "bold"),
+        locations = cells_body(
+          columns = vars(exp_wpa),
+          rows = exp_wpa >= 0
+        )
+      ) %>%
+      tab_style(
+        style = cell_text(color = "red", weight = "bold", align = "center"),
+        locations = cells_title("title")
+      )
     
   }, width = 950)
 

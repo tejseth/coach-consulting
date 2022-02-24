@@ -285,6 +285,8 @@ write_csv(final_grid, "final_grid.csv")
 
 fourth <- nfl4th::load_4th_pbp(2014:2021)
 
+write_csv(fourth, "fourth.csv")
+
 fourth <- fourth %>%
   mutate(
     should_go = dplyr::case_when(
@@ -292,23 +294,69 @@ fourth <- fourth %>%
       go_boost < -1 ~ 0,
       TRUE ~ 2))
 
+season_select <- 2021
+
+# go_when_should <- fourth %>%
+#   filter(season == season_select, should_go == 1, !is.na(posteam)) %>%
+#   group_by(posteam) %>%
+#   summarize(count = n(),
+#             went_perc = mean(go, na.rm = T)) %>%
+#   left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
 go_when_should <- fourth %>%
-  filter(season == 2021, should_go == 1, !is.na(posteam)) %>%
+  filter(season >= 2015, should_go == 1, !is.na(posteam)) %>%
   group_by(posteam) %>%
   summarize(count = n(),
             went_perc = mean(go, na.rm = T)) %>%
   left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
 
 go_when_should %>%
-  ggplot(aes(x = reorder(posteam, )))
-
-kicked_when_shouldnt <- fourth %>%
-  filter(season == 2021, should_go == 1, !is.na(posteam), go == 0) %>%
-  group_by(posteam) %>%
-  summarize(count = n(),
-            avg_wpa = mean(wpa)) %>%
-  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+  ggplot(aes(x = reorder(posteam, -went_perc), y = went_perc)) +
+  geom_bar(aes(fill = team_color, color = team_color2), stat = "identity", alpha = 0.9) +
+  geom_image(aes(image = team_logo_espn), asp = 16/9, size = 0.04) +
+  scale_color_identity(aesthetics = c("fill", "color")) +
+  theme_minimal() +
+  labs(x = "Team",
+       y = "Went % When Should",
+       title = paste0("Teams That Went for 4th Downs When They Should Have, 2015-2021")) +
+  theme(panel.grid.major.x = element_line(size = 0.1),
+        legend.position = "none")
+ggsave('4th-2021.png', width = 14, height = 10, dpi = "retina")
 
 go_when_should %>%
-  ggplot(aes(x = ))
+  arrange(-went_perc) %>%
+  ungroup() %>%
+  mutate(rank = row_number(),
+         went_perc = round(went_perc, 1)) %>%
+  select(rank, team_wordmark, count, went_perc) %>%
+  gt() %>%
+  text_transform(
+    locations = cells_body(vars(team_wordmark)),
+    fn = function(x){
+      web_image(
+        url = x,
+        height = px(25)
+      )
+    }
+  ) %>%
+  cols_label(rank = "Rank",
+              team_wordmark = "Team",
+              count = "# of Decisions",
+              went_perc = "% Went for It") %>%
+  data_color(
+    columns = vars(went_perc),
+    colors = scales::col_numeric(
+      c("#f87274", "#ffeb84", "#63be7b"), 
+      domain = NULL)
+  ) %>%
+  cols_align(align = "center")
+
+kicked_when_shouldnt <- fourth %>%
+  filter(season >= 2015, should_go == 1, !is.na(posteam), go == 0) %>%
+  group_by(posteam) %>%
+  summarize(count = n(),
+            sum_wpa = -sum(wpa)) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+  
+  
 
