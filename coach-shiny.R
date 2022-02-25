@@ -65,7 +65,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                  sliderInput("xp_make_rate_select", "Kicker XP Make Rate", value = 0.89, min = 0.8, max = 1.0, sep = "", step = 0.03),
           ),
           column(7, align = "center",
-                 selectInput("game_secs_select",
+                 selectInput("game_seconds_select",
                              "Game Seconds Remaining",
                              c(sort(unique(game_secs_params))), selected = 60),
           ),
@@ -79,11 +79,11 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
           br(),
           br(),
           br(),
-          column(10, align = "left",
-                 textOutput("wpa_success"),
-                 textOutput("wpa_fail"),
-                 textOutput("conv_rate"),
-                 textOutput("exp_wpa"),),
+          # column(10, align = "left",
+          #        textOutput("wpa_success"),
+          #        textOutput("wpa_fail"),
+          #        textOutput("conv_rate"),
+          #        textOutput("exp_wpa"),),
         )
       )
     )
@@ -175,7 +175,7 @@ server <- function(input, output) {
       filter(off_epa_in_5 == input$off_epa_select,
              def_epa_in_5 == input$def_epa_select,
              xp_make_rate == input$xp_make_rate_select,
-             game_seconds_remaining == input$game_secs_select,
+             game_seconds_remaining == input$game_seconds_select,
              score_differential == input$diff_score_select) %>%
       mutate(rec = case_when(
         a < 0.03 ~ "Kick XP",
@@ -186,7 +186,7 @@ server <- function(input, output) {
     
     two_up_or_down = ifelse(input$diff_score_select >= 0, "Up ", "Down ")
     two_string = paste0(two_up_or_down, input$diff_score_select, ", ", 
-                    input$game_secs_select, " seconds left")
+                    input$game_seconds_select, " seconds left")
     
     two_df <- data.frame(Label  = c("Go For 2", "Kick XP"),
                      Success = c(two_row$wp1, two_row$wp3),
